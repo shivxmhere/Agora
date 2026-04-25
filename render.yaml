@@ -15,5 +15,7 @@ services:
         value: production
       - key: GROQ_API_KEY
         sync: false
+        description: Get from console.groq.com
       - key: TAVILY_API_KEY
         sync: false
+        description: Get from app.tavily.com
