@@ -1,0 +1,1 @@
+# contentwriter init

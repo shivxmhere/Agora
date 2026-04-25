@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-void: #050508;
+  --color-card: #0D0D14;
+  --color-elevated: #111119;
+  --color-border: #1A1A2E;
+  --color-borderglow: #00F5FF33;
+  --color-cyan: #00F5FF;
+  --color-purple: #7B2FBE;
+  --color-lime: #A8FF3E;
+  --color-orange: #FF6B35;
+  --color-primary: #F0F0FF;
+  --color-muted: #6B7280;
+  --color-dim: #374151;
+
+  --font-display: var(--font-space-mono), monospace;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+  --font-body: var(--font-geist-sans), sans-serif;
+  
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-glow: pulseglow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes pulseglow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(0, 245, 255, 0.5); }
+  50% { opacity: .7; box-shadow: 0 0 20px rgba(0, 245, 255, 0.8); }
+}
+
+:root {
+  --bg-void: #050508;
+  --bg-card: #0D0D14;
+  --bg-elevated: #111119;
+  --border: #1A1A2E;
+  --border-glow: #00F5FF33;
+  --accent-cyan: #00F5FF;
+  --accent-purple: #7B2FBE;
+  --accent-lime: #A8FF3E;
+  --accent-orange: #FF6B35;
+  --text-primary: #F0F0FF;
+  --text-muted: #6B7280;
+  --text-dim: #374151;
+}
+
+body {
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, rgba(0, 245, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 245, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
