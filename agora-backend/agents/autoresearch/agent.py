@@ -25,17 +25,21 @@ class AutoResearchAgent(BaseAgent):
 
     def __init__(self):
         groq_key = os.getenv("GROQ_API_KEY", "")
-        if groq_key and "your_groq" not in groq_key and len(groq_key) > 10:
+        if not self._is_placeholder(groq_key):
             self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
         else:
             self.llm = None
 
         self.embeddings = FakeEmbeddings(size=1536)
-        tavily_key = os.getenv("TAVILY_API_KEY", "dummy")
-        try:
-            from tavily import TavilyClient
-            self.tavily_client = TavilyClient(api_key=tavily_key)
-        except Exception:
+        tavily_key = os.getenv("TAVILY_API_KEY", "")
+        
+        if not self._is_placeholder(tavily_key):
+            try:
+                from tavily import TavilyClient
+                self.tavily_client = TavilyClient(api_key=tavily_key)
+            except Exception:
+                self.tavily_client = None
+        else:
             self.tavily_client = None
 
         if self.llm:
@@ -60,6 +64,10 @@ class AutoResearchAgent(BaseAgent):
 
     def search_node(self, state: ResearchState) -> Dict:
         state["stream_callback"]("\n🔍 **Searching the web...**\n")
+        if not self.tavily_client:
+            state["stream_callback"]("⚠️ [Search skipped: No valid Tavily API key found]\n")
+            return {"sources": []}
+            
         try:
             response = self.tavily_client.search(
                 state["query"], search_depth="advanced", max_results=5
@@ -70,7 +78,7 @@ class AutoResearchAgent(BaseAgent):
             ]
         except Exception as e:
             sources = []
-            state["stream_callback"](f"[Search warning: {e}]\n")
+            state["stream_callback"](f"⚠️ [Search warning: {e}]\n")
         return {"sources": sources}
 
     def _scrape_url(self, url):

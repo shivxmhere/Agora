@@ -154,20 +154,46 @@ class BaseAgent(ABC):
     def _run_with_llm(self, input: str, stream_callback: Optional[Callable] = None) -> str:
         pass
 
+    def _is_placeholder(self, key: Optional[str]) -> bool:
+        if not key:
+            return True
+        placeholders = ["your_", "replace_me", "placeholder", "key_here", "insert_"]
+        key_lower = key.lower()
+        return any(p in key_lower for p in placeholders) or len(key) < 10
+
     def run(self, input: str, stream_callback: Optional[Callable] = None) -> str:
         try:
             # Check if API key is a placeholder
             groq_key = os.getenv("GROQ_API_KEY", "")
-            if not groq_key or "your_groq" in groq_key or len(groq_key) < 10:
-                raise ValueError("GROQ_API_KEY not configured — using demo mode")
+            
+            if self._is_placeholder(groq_key):
+                logger.info(f"[{self.agent_id}] No valid GROQ_API_KEY found — entering demo mode")
+                return self._serve_mock(input, stream_callback)
+            
+            # If we have a key, try real execution
             return self._run_with_llm(input, stream_callback)
+            
         except Exception as e:
-            logger.warning(f"[{self.agent_id}] LLM failed ({e}), falling back to mock response")
-            mock = get_mock_response(self.agent_id, input)
-            if stream_callback:
-                # Stream mock response in chunks for visual effect
-                chunk_size = 8
-                for i in range(0, len(mock), chunk_size):
-                    stream_callback(mock[i:i + chunk_size])
-                    time.sleep(0.015)
-            return mock
+            error_msg = str(e)
+            logger.error(f"[{self.agent_id}] Execution failed: {error_msg}")
+            
+            # If it's an authentication error, be upfront about it
+            if "401" in error_msg or "unauthorized" in error_msg.lower() or "403" in error_msg:
+                msg = f"⚠️ **API Authentication Error**: The provided API key is invalid or unauthorized.\n\nDetails: {error_msg}\n\nPlease check your environment variables in the deployment dashboard."
+                if stream_callback:
+                    stream_callback(msg)
+                return msg
+
+            # For other unexpected failures, provide a relevant fallback or mock
+            logger.warning(f"[{self.agent_id}] LLM failed ({e}), falling back to demo response")
+            return self._serve_mock(input, stream_callback)
+
+    def _serve_mock(self, input: str, stream_callback: Optional[Callable] = None) -> str:
+        mock = get_mock_response(self.agent_id, input)
+        if stream_callback:
+            # Stream mock response in chunks for visual effect
+            chunk_size = 12
+            for i in range(0, len(mock), chunk_size):
+                stream_callback(mock[i:i + chunk_size])
+                time.sleep(0.01)
+        return mock
