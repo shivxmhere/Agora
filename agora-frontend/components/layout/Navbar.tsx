@@ -15,12 +15,12 @@ export default function Navbar() {
           </div>
         </Link>
         
-        <div className="hidden md:flex items-center gap-8 font-mono text-sm">
-          <Link href="/marketplace" className="text-muted hover:text-cyan transition-colors">[/marketplace]</Link>
-          <Link href="#" className="text-muted hover:text-primary transition-colors">[/compose]</Link>
-          <Link href="#" className="text-muted hover:text-primary transition-colors">[/battle]</Link>
-          <Link href="#" className="text-muted hover:text-primary transition-colors">[/publish]</Link>
-        </div>
+        <div className="hidden md:flex items-center gap-6 text-sm font-mono font-bold">
+        <Link href="/marketplace" className="text-muted hover:text-primary transition-colors">[/marketplace]</Link>
+        <Link href="/compose" className="text-muted hover:text-cyan transition-colors">[/compose]</Link>
+        <Link href="/battle" className="text-muted hover:text-orange transition-colors">[/battle]</Link>
+        <Link href="/publish" className="text-muted hover:text-purple transition-colors">[/publish]</Link>
+      </div>
 
         <div>
           <motion.button 
