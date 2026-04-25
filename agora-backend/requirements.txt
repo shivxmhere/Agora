@@ -9,7 +9,7 @@ langchain-groq==0.1.5
 langchain-community==0.2.3
 langgraph==0.1.5
 tavily-python==0.3.3
-faiss-cpu==1.8.0.post1
+faiss-cpu
 beautifulsoup4==4.12.3
 requests==2.31.0
 httpx==0.27.0
