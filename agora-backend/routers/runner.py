@@ -60,8 +60,23 @@ async def agent_stream_generator(run_id: str, agent_id: str, run_input: str, req
         async def run_agent_coro():
             start_time = datetime.datetime.utcnow()
             try:
-                # Need to use to_thread because LangChain block
-                output = await asyncio.to_thread(agent.run, run_input, stream_callback)
+                import os
+                if "your_groq" in os.getenv("GROQ_API_KEY", "your_groq"):
+                    # Mock perfectly for the hackathon demo
+                    import time
+                    demo_text = f"**[DEMO MODE ACTIVATED]**\\n\\nI am the **{agent_id}** agent. \\n\\nIntercepted Input: *'{run_input}'*\\n\\n### Analysis Overview\\n"
+                    demo_text += "This is a simulated response because the Groq API key is running in local placeholder mode.\\n"
+                    demo_text += "1. Dissected pipeline parameters.\\n2. Validated contextual constraints.\\n3. Optimized synthetic query.\\n\\n"
+                    demo_text += "### Final Executable Output\\n"
+                    demo_text += "Everything operates precisely and flawlessly. I have completed my assigned execution matrix without any networking overhead."
+                    
+                    for word in demo_text.split(" "):
+                        stream_callback(word + " ")
+                        await asyncio.sleep(0.05)
+                        
+                    output = demo_text
+                else:    
+                    output = await asyncio.to_thread(agent.run, run_input, stream_callback)
                 
                 # Signal completion
                 end_time = datetime.datetime.utcnow()

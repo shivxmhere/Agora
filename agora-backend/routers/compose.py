@@ -43,7 +43,14 @@ async def execute_pipeline(pipeline_run_id: str, request: ComposeRequest):
             agent = registry.get_agent(agent_id)
             # Null callback since we aren't streaming
             def null_callback(x): pass
-            output = await asyncio.to_thread(agent.run, current_input, null_callback)
+            
+            import os
+            if "your_groq" in os.getenv("GROQ_API_KEY", "your_groq"):
+                import asyncio
+                await asyncio.sleep(1.5)
+                output = f"**[DEMO PIPELINE]** Step {i+1} completed successfully using synthetic routing.\\nAnalyzed previous payload:\\n*{str(current_input)[:100]}...*\\n\\nOutput generated without external APIs."
+            else:
+                output = await asyncio.to_thread(agent.run, current_input, null_callback)
             
             end_time = datetime.datetime.utcnow()
             run_time = (end_time - start_time).total_seconds()
