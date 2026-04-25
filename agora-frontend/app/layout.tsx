@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { Space_Mono, JetBrains_Mono } from 'next/font/google';
-import localFont from 'next/font/local';
+import { Space_Mono, JetBrains_Mono, Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { DemoBanner } from '@/components/shared/DemoBanner';
 
 const spaceMono = Space_Mono({
   weight: ['400', '700'],
@@ -16,14 +16,15 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-jetbrains-mono',
 });
 
-// We can just use standard sans-serif for Geist if we don't have the local file downloaded, 
-// but using standard next/font/google for Inter as a fallback if Geist isn't configured 
-import { Inter } from 'next/font/google';
-const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-geist-sans',
+});
 
 export const metadata: Metadata = {
   title: 'AGORA — The Open AI Agent Marketplace',
-  description: 'One hub. Every AI agent. Zero barriers.',
+  description: 'One hub. Every AI agent. Zero barriers. Discover, deploy and compose autonomous AI agents.',
+  keywords: ['AI agents', 'marketplace', 'LangGraph', 'Groq', 'autonomous agents'],
 };
 
 export default function RootLayout({
@@ -36,9 +37,7 @@ export default function RootLayout({
       <body
         className={`${spaceMono.variable} ${jetbrainsMono.variable} ${inter.variable} min-h-screen flex flex-col bg-void text-primary font-body antialiased`}
       >
-        <div className="bg-lime text-void text-center py-1 font-mono text-xs font-bold w-full uppercase tracking-widest z-[100] relative">
-          ⚠️ Running on Demo Data — Groq + Tavily APIs active for HackIndia evaluation ⚠️
-        </div>
+        <DemoBanner />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

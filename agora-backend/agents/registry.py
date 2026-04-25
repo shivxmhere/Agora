@@ -15,14 +15,17 @@ AGENT_MAP = {
 
 class AgentRegistry:
     def __init__(self):
-        self.agents = {}
+        self._agents = {}
 
     def get_agent(self, agent_id: str) -> BaseAgent:
-        if agent_id not in self.agents:
-            if agent_id in AGENT_MAP:
-                self.agents[agent_id] = AGENT_MAP[agent_id]()
-            else:
-                raise ValueError(f"Agent {agent_id} not found in registry.")
-        return self.agents[agent_id]
+        if agent_id not in self._agents:
+            if agent_id not in AGENT_MAP:
+                raise ValueError(f"Agent '{agent_id}' not found in registry.")
+            self._agents[agent_id] = AGENT_MAP[agent_id]()
+        return self._agents[agent_id]
 
 registry = AgentRegistry()
+
+# Convenience function used by runner
+def get_agent(agent_id: str) -> BaseAgent:
+    return registry.get_agent(agent_id)

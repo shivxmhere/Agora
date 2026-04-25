@@ -1,115 +1,82 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 import asyncio
 import uuid
-import datetime
 import json
+import logging
+from datetime import datetime
 from pydantic import BaseModel
-from typing import List, Optional
-from database.db import get_db
-from agents.registry import registry
+from typing import List
+from database.db import get_run, update_run
+from agents.registry import get_agent, AGENT_MAP
 
 router = APIRouter(prefix="/api/compose", tags=["Compose"])
+logger = logging.getLogger(__name__)
+
 
 class StepConfig(BaseModel):
     agent_id: str
 
+
 class ComposeRequest(BaseModel):
     steps: List[StepConfig]
     input: str
-    session_id: str
+    session_id: str = None
 
-class ComposeResponse(BaseModel):
-    pipeline_run_id: str
-    step_run_ids: List[str]
 
-async def execute_pipeline(pipeline_run_id: str, request: ComposeRequest):
+async def execute_pipeline(pipeline_run_id: str, steps: List[str], initial_input: str):
+    """Sequentially execute pipeline steps, passing output of each as input to next."""
     import aiosqlite
     import os
-    DATABASE_URL = os.getenv("DATABASE_URL", "./agora.db")
-    
-    db = await aiosqlite.connect(DATABASE_URL)
-    current_input = request.input
-    
-    for i, step in enumerate(request.steps):
-        agent_id = step.agent_id
+    DB_PATH = os.getenv("DATABASE_URL", "./agora.db")
+
+    current_input = initial_input
+    for i, agent_id in enumerate(steps):
         run_id = f"{pipeline_run_id}-step-{i}"
-        
-        # update status to running
-        await db.execute("UPDATE agent_runs SET status = 'running' WHERE id = ?", (run_id,))
-        await db.commit()
-        
-        start_time = datetime.datetime.utcnow()
+        await update_run(run_id, status="running")
+        start = datetime.utcnow()
         try:
-            agent = registry.get_agent(agent_id)
-            # Null callback since we aren't streaming
-            def null_callback(x): pass
-            
-            import os
-            if "your_groq" in os.getenv("GROQ_API_KEY", "your_groq"):
-                import asyncio
-                await asyncio.sleep(1.5)
-                output = f"**[DEMO PIPELINE]** Step {i+1} completed successfully using synthetic routing.\\nAnalyzed previous payload:\\n*{str(current_input)[:100]}...*\\n\\nOutput generated without external APIs."
-            else:
-                output = await asyncio.to_thread(agent.run, current_input, null_callback)
-            
-            end_time = datetime.datetime.utcnow()
-            run_time = (end_time - start_time).total_seconds()
-            
-            now = datetime.datetime.utcnow().isoformat()
-            await db.execute('''
-                UPDATE agent_runs 
-                SET status = 'completed', output = ?, completed_at = ?, run_time = ?
-                WHERE id = ?
-            ''', (output, now, run_time, run_id))
-            await db.commit()
-            
-            # Output becomes next input
-            current_input = output
-            
+            agent = get_agent(agent_id)
+            output = await asyncio.to_thread(agent.run, current_input, None)
+            run_time = (datetime.utcnow() - start).total_seconds()
+            await update_run(run_id, status="completed", output=output, run_time=run_time)
+            current_input = output  # chain output → next input
         except Exception as e:
-            now = datetime.datetime.utcnow().isoformat()
-            await db.execute('''
-                UPDATE agent_runs 
-                SET status = 'failed', output = ?, completed_at = ?
-                WHERE id = ?
-            ''', (str(e), now, run_id))
-            await db.commit()
-            break
-            
-    await db.close()
+            logger.error(f"Pipeline step {i} failed: {e}")
+            await update_run(run_id, status="failed", output=str(e))
+            break  # stop pipeline on failure
 
 
-@router.post("/run", response_model=ComposeResponse)
-async def create_compose_run(request: ComposeRequest, background_tasks: BackgroundTasks, db = Depends(get_db)):
-    pipeline_run_id = str(uuid.uuid4())
-    step_run_ids = []
-    
-    now = datetime.datetime.utcnow().isoformat()
-    
-    for i, step in enumerate(request.steps):
-        # find agent
-        cursor = await db.execute("SELECT * FROM agents WHERE id = ? OR slug = ?", (step.agent_id, step.agent_id))
-        agent_row = await cursor.fetchone()
-        
-        if not agent_row:
+@router.post("/run")
+async def create_compose_run(request: ComposeRequest, background_tasks: BackgroundTasks):
+    if not request.steps:
+        raise HTTPException(status_code=422, detail="At least one step required")
+
+    # Validate agents exist
+    for step in request.steps:
+        if step.agent_id not in AGENT_MAP:
             raise HTTPException(status_code=404, detail=f"Agent '{step.agent_id}' not found")
-        
-        real_agent_id = dict(agent_row)["id"]
-        request.steps[i].agent_id = real_agent_id # use real ID
-        
-        step_run_id = f"{pipeline_run_id}-step-{i}"
-        step_run_ids.append(step_run_id)
-        
-        await db.execute('''
-            INSERT INTO agent_runs (id, agent_id, session_id, input, status, started_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (step_run_id, real_agent_id, request.session_id, request.input if i == 0 else 'Waiting for previous output...', 'queued', now))
-        
-    await db.commit()
-    
-    background_tasks.add_task(execute_pipeline, pipeline_run_id, request)
-    
-    return {
-        "pipeline_run_id": pipeline_run_id,
-        "step_run_ids": step_run_ids
-    }
+
+    pipeline_run_id = str(uuid.uuid4())
+    session_id = request.session_id or str(uuid.uuid4())
+    step_run_ids = []
+    now = datetime.utcnow().isoformat()
+
+    import aiosqlite
+    import os
+    DB_PATH = os.getenv("DATABASE_URL", "./agora.db")
+
+    async with aiosqlite.connect(DB_PATH) as db:
+        for i, step in enumerate(request.steps):
+            step_run_id = f"{pipeline_run_id}-step-{i}"
+            step_run_ids.append(step_run_id)
+            input_text = request.input if i == 0 else "Waiting for previous step..."
+            await db.execute("""
+                INSERT INTO agent_runs (id, agent_id, session_id, input, status, started_at)
+                VALUES (?, ?, ?, ?, 'queued', ?)
+            """, (step_run_id, step.agent_id, session_id, input_text, now))
+        await db.commit()
+
+    agent_ids = [s.agent_id for s in request.steps]
+    background_tasks.add_task(execute_pipeline, pipeline_run_id, agent_ids, request.input)
+
+    return {"pipeline_run_id": pipeline_run_id, "step_run_ids": step_run_ids}

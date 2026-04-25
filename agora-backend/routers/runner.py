@@ -1,175 +1,130 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
 import asyncio
+import json
 import uuid
-import datetime
-from database.db import get_db
-from schemas.schemas import RunCreate, RunResponse, RunStatusResponse
-from agents.registry import registry
+import time
+import logging
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from database.db import get_run, create_run, update_run, log_activity
+from agents.registry import get_agent, AGENT_MAP
 
 router = APIRouter(prefix="/api", tags=["Runner"])
+logger = logging.getLogger(__name__)
 
-@router.post("/agents/{agent_id}/run", response_model=RunResponse)
-async def create_run(agent_id: str, run_data: RunCreate, db = Depends(get_db)):
-    # verify agent exists
-    cursor = await db.execute("SELECT * FROM agents WHERE id = ?", (agent_id,))
-    agent_row = await cursor.fetchone()
-    if not agent_row:
-        raise HTTPException(status_code=404, detail="Agent not found")
+
+class RunRequest(BaseModel):
+    input: str
+    session_id: str = None
+
+
+@router.post("/agents/{agent_id}/run")
+async def start_run(agent_id: str, body: RunRequest):
+    if agent_id not in AGENT_MAP:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_id}' not found")
+
+    if not body.input or not body.input.strip():
+        raise HTTPException(status_code=422, detail="Input cannot be empty")
 
     run_id = str(uuid.uuid4())
-    now = datetime.datetime.utcnow().isoformat()
+    session_id = body.session_id or str(uuid.uuid4())
 
-    await db.execute('''
-        INSERT INTO agent_runs (id, agent_id, session_id, input, status, started_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (run_id, agent_id, run_data.session_id, run_data.input, 'queued', now))
-    
-    # Broadcast activity log
-    agent_name = dict(agent_row)["name"]
-    await db.execute('''
-        INSERT INTO activity_log (id, agent_id, agent_name, action, location, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (str(uuid.uuid4()), agent_id, agent_name, 'just ran', 'Global', now))
-    await db.commit()
-    
-    # Broadcast to websockets
-    from routers.activity import manager
-    asyncio.create_task(manager.broadcast({
-        "agent_name": agent_name,
-        "action": "just ran",
-        "location": "Global",
-        "time": "just now"
-    }))
-    
-    return {"run_id": run_id, "stream_url": f"/api/runs/{run_id}/stream"}
+    await create_run(run_id, agent_id, session_id, body.input.strip())
+    logger.info(f"Run created: {run_id} for agent: {agent_id}")
 
-async def agent_stream_generator(run_id: str, agent_id: str, run_input: str, request: Request):
-    import aiosqlite
-    import os
-    DATABASE_URL = os.getenv("DATABASE_URL", "./agora.db")
-    
+    # Broadcast to websocket activity feed
     try:
-        agent = registry.get_agent(agent_id)
-        
-        queue = asyncio.Queue()
-        
-        def stream_callback(content: str):
-            asyncio.run_coroutine_threadsafe(queue.put(content), asyncio.get_event_loop())
-            
-        async def run_agent_coro():
-            start_time = datetime.datetime.utcnow()
-            try:
-                import os
-                if "your_groq" in os.getenv("GROQ_API_KEY", "your_groq"):
-                    # Mock perfectly for the hackathon demo
-                    import time
-                    demo_text = f"**[DEMO MODE ACTIVATED]**\\n\\nI am the **{agent_id}** agent. \\n\\nIntercepted Input: *'{run_input}'*\\n\\n### Analysis Overview\\n"
-                    demo_text += "This is a simulated response because the Groq API key is running in local placeholder mode.\\n"
-                    demo_text += "1. Dissected pipeline parameters.\\n2. Validated contextual constraints.\\n3. Optimized synthetic query.\\n\\n"
-                    demo_text += "### Final Executable Output\\n"
-                    demo_text += "Everything operates precisely and flawlessly. I have completed my assigned execution matrix without any networking overhead."
-                    
-                    for word in demo_text.split(" "):
-                        stream_callback(word + " ")
-                        await asyncio.sleep(0.05)
-                        
-                    output = demo_text
-                else:    
-                    output = await asyncio.to_thread(agent.run, run_input, stream_callback)
-                
-                # Signal completion
-                end_time = datetime.datetime.utcnow()
-                run_time = (end_time - start_time).total_seconds()
-                await queue.put({"type": "done", "run_time": run_time, "output": output})
-            except Exception as e:
-                await queue.put({"type": "error", "message": str(e)})
+        from routers.activity import manager
+        asyncio.create_task(manager.broadcast({
+            "agent_name": agent_id,
+            "action": "just ran",
+            "location": "Global",
+            "time": "just now"
+        }))
+    except Exception:
+        pass
 
-        task = asyncio.create_task(run_agent_coro())
-        
-        db = await aiosqlite.connect(DATABASE_URL)
-        await db.execute("UPDATE agent_runs SET status = 'running' WHERE id = ?", (run_id,))
-        await db.commit()
+    return {
+        "run_id": run_id,
+        "agent_id": agent_id,
+        "status": "queued",
+        "stream_url": f"/api/runs/{run_id}/stream"
+    }
 
-        # Stream content
-        final_output = ""
-        final_run_time = 0.0
-        
-        while True:
-            if await request.is_disconnected():
-                task.cancel()
-                break
-                
-            item = await queue.get()
-            
-            if isinstance(item, dict):
-                if item["type"] == "done":
-                    final_output = item["output"]
-                    final_run_time = item["run_time"]
-                    import json
-                    yield f"data: {json.dumps({'type': 'done', 'run_time': final_run_time})}\n\n"
-                    break
-                elif item["type"] == "error":
-                    import json
-                    yield f"data: {json.dumps({'type': 'error', 'message': item['message']})}\n\n"
-                    
-                    await db.execute("UPDATE agent_runs SET status = 'failed' WHERE id = ?", (run_id,))
-                    await db.commit()
-                    await db.close()
-                    return
-            else:
-                import json
-                yield f"data: {json.dumps({'type': 'token', 'content': item})}\n\n"
-
-        # Update DB on complete
-        if final_output:
-            now = datetime.datetime.utcnow().isoformat()
-            await db.execute('''
-                UPDATE agent_runs 
-                SET status = 'completed', output = ?, completed_at = ?, run_time = ?
-                WHERE id = ?
-            ''', (final_output, now, final_run_time, run_id))
-            
-            # Increment agent run count
-            await db.execute('''
-                UPDATE agents 
-                SET total_runs = total_runs + 1 
-                WHERE id = ?
-            ''', (agent_id,))
-            
-            await db.commit()
-        
-        await db.close()
-        
-    except Exception as e:
-        import json
-        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
 @router.get("/runs/{run_id}/stream")
-async def stream_run(run_id: str, request: Request, db = Depends(get_db)):
-    cursor = await db.execute("SELECT * FROM agent_runs WHERE id = ?", (run_id,))
-    run = await cursor.fetchone()
+async def stream_run(run_id: str):
+    run = await get_run(run_id)
     if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-        
-    agent_id = run["agent_id"]
-    run_input = run["input"]
+        async def error_gen():
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Run not found'})}\n\n"
+        return StreamingResponse(error_gen(), media_type="text/event-stream")
+
+    async def generate():
+        tokens = []
+        done_event = asyncio.Event()
+        start_time = time.time()
+
+        def stream_callback(content: str):
+            if content:
+                tokens.append(content)
+
+        await update_run(run_id, status="running")
+
+        # Keepalive so browser doesn't timeout before first token
+        yield f"data: {json.dumps({'type': 'status', 'message': 'Agent starting...'})}\n\n"
+
+        async def run_agent():
+            try:
+                agent = get_agent(run["agent_id"])
+                result = await asyncio.to_thread(
+                    agent.run, run["input"], stream_callback
+                )
+                elapsed = round(time.time() - start_time, 2)
+                await update_run(run_id, status="completed", output=result, run_time=elapsed)
+            except Exception as e:
+                logger.error(f"Agent run error for {run_id}: {e}", exc_info=True)
+                tokens.append(f"\n\n❌ **Error:** {str(e)}")
+                await update_run(run_id, status="failed", output=str(e))
+            finally:
+                done_event.set()
+
+        agent_task = asyncio.create_task(run_agent())
+
+        # Poll and stream tokens
+        sent_index = 0
+        while not done_event.is_set() or sent_index < len(tokens):
+            while sent_index < len(tokens):
+                yield f"data: {json.dumps({'type': 'token', 'content': tokens[sent_index]})}\n\n"
+                sent_index += 1
+            if not done_event.is_set():
+                await asyncio.sleep(0.05)
+
+        # Drain any remaining tokens
+        while sent_index < len(tokens):
+            yield f"data: {json.dumps({'type': 'token', 'content': tokens[sent_index]})}\n\n"
+            sent_index += 1
+
+        run_time = round(time.time() - start_time, 2)
+        yield f"data: {json.dumps({'type': 'done', 'run_time': run_time, 'run_id': run_id})}\n\n"
+
+        await agent_task  # clean up
 
     return StreamingResponse(
-        agent_stream_generator(run_id, agent_id, run_input, request), 
+        generate(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        },
     )
 
-@router.get("/runs/{run_id}", response_model=RunStatusResponse)
-async def get_run(run_id: str, db = Depends(get_db)):
-    cursor = await db.execute("SELECT * FROM agent_runs WHERE id = ?", (run_id,))
-    run = await cursor.fetchone()
+
+@router.get("/runs/{run_id}")
+async def get_run_status(run_id: str):
+    run = await get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
-        
-    return {
-        "status": run["status"],
-        "output": run["output"],
-        "run_time": run["run_time"]
-    }
+    return run

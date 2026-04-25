@@ -1,30 +1,45 @@
+import os
+import asyncio
+import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from database.db import init_db
-from routers import agents, runner, ratings, activity, analytics, compose
 from dotenv import load_dotenv
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+from database.db import init_db, seed_agents_if_empty, seed_activity_if_empty
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB and seed demo agents
+    logger.info("Starting AGORA backend...")
     await init_db()
+    await seed_agents_if_empty()
+    await seed_activity_if_empty()
+    logger.info("AGORA backend ready.")
     yield
+    logger.info("AGORA backend shutting down.")
 
-app = FastAPI(title="AGORA Backend", lifespan=lifespan)
+app = FastAPI(
+    title="AGORA API",
+    description="The Open AI Agent Marketplace",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
-# CORS enabled for all origins
+# CRITICAL: allow_credentials MUST be False when allow_origins=["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
-# Include routers
+from routers import agents, runner, ratings, activity, analytics, compose
 app.include_router(agents.router)
 app.include_router(runner.router)
 app.include_router(ratings.router)
@@ -33,23 +48,21 @@ app.include_router(analytics.router)
 app.include_router(compose.router)
 
 @app.get("/health")
-async def health_check():
-    import aiosqlite
-    import os
-    DATABASE_URL = os.getenv("DATABASE_URL", "./agora.db")
+async def health():
+    from database.db import get_agent_count, get_today_run_count
     try:
-        async with aiosqlite.connect(DATABASE_URL) as db:
-            cursor = await db.execute("SELECT COUNT(*) FROM agents")
-            row = await cursor.fetchone()
-            num_agents = row[0] if row else 0
-            
-            cursor = await db.execute("SELECT COUNT(*) FROM agent_runs")
-            row = await cursor.fetchone()
-            runs_today = row[0] if row else 0
-            
-        return {"status": "live", "agents": num_agents, "runs_today": runs_today}
+        return {
+            "status": "live",
+            "service": "AGORA API",
+            "agents": await get_agent_count(),
+            "runs_today": await get_today_run_count()
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.get("/")
+async def root():
+    return {"message": "AGORA API is live", "docs": "/docs", "health": "/health"}
 
 @app.websocket("/ws/activity")
 async def websocket_activity(websocket: WebSocket):

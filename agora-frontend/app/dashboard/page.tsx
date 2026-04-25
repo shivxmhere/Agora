@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -7,7 +8,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveCo
 import { Shield, Zap, TrendingUp, Star, Play, Edit, PauseCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function DashboardPage() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const [creator, setCreator] = useState(searchParams.get('creator') || '');
   const [inputVal, setInputVal] = useState(creator);
@@ -29,8 +30,11 @@ export default function DashboardPage() {
         <h1 className="font-display text-3xl font-bold text-white mb-4">CREATOR AUTHENTICATION</h1>
         <p className="text-muted mb-8 text-center max-w-md">Enter your registry handle to access telemetry and financial data for your deployed agents.</p>
         <div className="flex w-full max-w-sm">
-          <input type="text" placeholder="e.g. @0xDeveloper" value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && setCreator(inputVal)} className="flex-1 bg-elevated border border-border p-3 text-white focus:outline-none focus:border-cyan" />
+          <input type="text" placeholder="e.g. shivxmhere" value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={e => e.key === 'Enter' && setCreator(inputVal)} className="flex-1 bg-elevated border border-border p-3 text-white focus:outline-none focus:border-cyan" />
           <button onClick={() => setCreator(inputVal)} className="bg-cyan border border-cyan text-void font-bold px-6 hover:bg-transparent hover:text-cyan transition-colors">ACCESS</button>
+        </div>
+        <div className="mt-6 text-xs text-muted">
+          Try: <button onClick={() => { setCreator('shivxmhere'); setInputVal('shivxmhere'); }} className="text-cyan hover:underline">shivxmhere</button> · <button onClick={() => { setCreator('aditya_dev'); setInputVal('aditya_dev'); }} className="text-cyan hover:underline">aditya_dev</button>
         </div>
       </div>
     );
@@ -46,7 +50,7 @@ export default function DashboardPage() {
           <h1 className="font-display text-4xl mb-2 text-primary font-bold">AGORA CREATOR DASHBOARD</h1>
           <div className="flex items-center gap-4">
             <span className="text-cyan text-xl">[{creator}]</span>
-            <div className="flex items-center gap-1 bg-elevated border border-border px-2 py-0.5 text-xs text-muted"> <Zap className="w-3 h-3 text-cyan fill-cyan" /> SCORE: 9.8 </div>
+            <div className="flex items-center gap-1 bg-elevated border border-border px-2 py-0.5 text-xs text-muted"> <Zap className="w-3 h-3 text-cyan fill-cyan" /> SCORE: 9.4 </div>
             <span className="bg-purple/10 text-purple border border-purple/30 px-2 py-0.5 text-[10px] tracking-wider font-bold">TOP CREATOR</span>
           </div>
         </div>
@@ -57,21 +61,21 @@ export default function DashboardPage() {
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        <div className="bg-card border border-border p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+        <div className="bg-card border border-border p-6">
           <div className="text-muted text-xs mb-2 flex justify-between">TOTAL RUNS <TrendingUp className="w-4 h-4 text-cyan" /></div>
-          <div className="font-display text-4xl text-white">{data.total_runs.toLocaleString()}</div>
+          <div className="font-display text-4xl text-white">{(data.total_runs || 0).toLocaleString()}</div>
         </div>
-        <div className="bg-card border border-border p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+        <div className="bg-card border border-border p-6">
           <div className="text-muted text-xs mb-2 flex justify-between">AVG RATING <Star className="w-4 h-4 text-lime" /></div>
-          <div className="font-display text-4xl text-white">{data.avg_rating.toFixed(1)}</div>
+          <div className="font-display text-4xl text-white">{(data.avg_rating || 0).toFixed(1)}</div>
         </div>
-        <div className="bg-card border border-border p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+        <div className="bg-card border border-border p-6">
           <div className="text-muted text-xs mb-2 flex justify-between">TOTAL EARNED <span className="text-orange">$</span></div>
-          <div className="font-display text-4xl text-white">${data.total_earned.toFixed(2)}</div>
+          <div className="font-display text-4xl text-white">${(data.total_earned || 0).toFixed(2)}</div>
         </div>
-        <div className="bg-card border border-border p-6 shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+        <div className="bg-card border border-border p-6">
           <div className="text-muted text-xs mb-2 flex justify-between">AGENTS LIVE <Zap className="w-4 h-4 text-purple" /></div>
-          <div className="font-display text-4xl text-white">{data.agents_live}</div>
+          <div className="font-display text-4xl text-white">{data.agents_live || 0}</div>
         </div>
       </div>
 
@@ -81,7 +85,7 @@ export default function DashboardPage() {
           <h3 className="text-sm font-bold text-muted mb-6">NETWORK EXECUTION TRAFFIC (7 DAYS)</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.runs_by_day}>
+              <AreaChart data={data.runs_by_day || []}>
                 <defs>
                   <linearGradient id="cyanGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#00F5FF" stopOpacity={0.3}/>
@@ -101,12 +105,12 @@ export default function DashboardPage() {
           <h3 className="text-sm font-bold text-muted mb-6">RUNS BY AGENT</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.runs_by_agent} layout="vertical" margin={{ top: 0, right: 0, left: 30, bottom: 0 }}>
+              <BarChart data={data.runs_by_agent || []} layout="vertical" margin={{ top: 0, right: 0, left: 30, bottom: 0 }}>
                 <XAxis type="number" hide />
                 <YAxis dataKey="agent_name" type="category" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
                 <RechartsTooltip contentStyle={{ backgroundColor: '#050508', borderColor: '#1A1A2E' }} cursor={{fill: '#111119'}}/>
                 <Bar dataKey="runs" radius={[0, 4, 4, 0]}>
-                  {data.runs_by_agent.map((entry: any, index: number) => (
+                  {(data.runs_by_agent || []).map((_: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={['#00F5FF', '#7B2FBE', '#A8FF3E', '#FF6B35'][index % 4]} />
                   ))}
                 </Bar>
@@ -115,56 +119,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* BOTTOM SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
-        <div>
-           <h3 className="font-display text-xl text-primary font-bold mb-4 border-b border-border pb-2">Recent Agent Activity</h3>
-           <div className="space-y-3">
-             {data.recent_runs.length === 0 ? <div className="text-dim text-sm h-32 flex items-center justify-center border border-dashed border-border">No recent runs recorded.</div> : null}
-             {data.recent_runs.map((r: any, i: number) => (
-               <div key={i} className="flex flex-col sm:flex-row justify-between sm:items-center bg-elevated border border-border p-3 text-xs gap-4">
-                 <div>
-                   <div className="text-cyan font-bold mb-1">{r.agent_name}</div>
-                   <div className="text-muted truncate max-w-xs">&gt; {r.input_preview}</div>
-                 </div>
-                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between gap-1">
-                   <span className="text-lime">{r.status.toUpperCase()}</span>
-                   <span className="text-dim">{r.created_at}</span>
-                 </div>
-               </div>
-             ))}
-           </div>
-        </div>
-
-        <div>
-           <h3 className="font-display text-xl text-primary font-bold mb-4 border-b border-border pb-2">Instance Management</h3>
-           <div className="bg-card border border-border overflow-x-auto">
-             <table className="w-full text-left text-sm whitespace-nowrap">
-               <thead className="bg-[#0a0a10] border-b border-border text-dim text-xs">
-                 <tr>
-                   <th className="font-normal px-4 py-3">NAME</th>
-                   <th className="font-normal px-4 py-3">STATUS</th>
-                   <th className="font-normal px-4 py-3">ACTIONS</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {data.runs_by_agent.map((r: any, i: number) => (
-                   <tr key={i} className="border-b border-border border-dashed hover:bg-elevated/50 transition-colors">
-                     <td className="px-4 py-3 text-cyan">{r.agent_name}</td>
-                     <td className="px-4 py-3"><span className="text-[10px] bg-lime/10 border border-lime text-lime px-2 py-0.5">LIVE</span></td>
-                     <td className="px-4 py-3 flex gap-4">
-                       <button className="text-muted hover:text-white flex items-center gap-1 text-[10px] uppercase"><Edit className="w-3 h-3"/> Edit</button>
-                       <button className="text-muted hover:text-orange flex items-center gap-1 text-[10px] uppercase"><PauseCircle className="w-3 h-3"/> Suspend</button>
-                     </td>
-                   </tr>
-                 ))}
-                 {data.runs_by_agent.length === 0 && <tr><td colSpan={3} className="text-center p-8 text-dim">No deployed agents found.</td></tr>}
-               </tbody>
-             </table>
-           </div>
-        </div>
-      </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen pt-24 px-4 text-center font-mono text-cyan animate-pulse">Loading dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
