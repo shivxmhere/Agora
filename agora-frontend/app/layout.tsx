@@ -36,6 +36,9 @@ export default function RootLayout({
       <body
         className={`${spaceMono.variable} ${jetbrainsMono.variable} ${inter.variable} min-h-screen flex flex-col bg-void text-primary font-body antialiased`}
       >
+        <div className="bg-lime text-void text-center py-1 font-mono text-xs font-bold w-full uppercase tracking-widest z-[100] relative">
+          ⚠️ Running on Demo Data — Groq + Tavily APIs active for HackIndia evaluation ⚠️
+        </div>
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

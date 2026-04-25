@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database.db import init_db
-from routers import agents, runner, ratings, activity, analytics
+from routers import agents, runner, ratings, activity, analytics, compose
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,6 +30,7 @@ app.include_router(runner.router)
 app.include_router(ratings.router)
 app.include_router(activity.router)
 app.include_router(analytics.router)
+app.include_router(compose.router)
 
 @app.get("/health")
 async def health_check():
