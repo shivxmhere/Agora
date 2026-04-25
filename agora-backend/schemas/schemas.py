@@ -58,10 +58,30 @@ class ActivityLog(BaseModel):
     location: str
     time: str  # e.g., "now", "2s ago"
 
+class TopAgentInfo(BaseModel):
+    name: str
+    total_runs: int
+
+class RunByDay(BaseModel):
+    date: str
+    runs: int
+
+class RunByAgent(BaseModel):
+    agent_name: str
+    runs: int
+
+class RecentRun(BaseModel):
+    agent_name: str
+    input_preview: str
+    status: str
+    created_at: str
+
 class AnalyticsResponse(BaseModel):
     total_runs: int
-    total_earnings: float
+    total_earned: float
     avg_rating: float
-    top_agent: str
-    runs_by_day: Dict[str, int]
-    runs_by_agent: Dict[str, int]
+    agents_live: int
+    top_agent: TopAgentInfo
+    runs_by_day: List[RunByDay]
+    runs_by_agent: List[RunByAgent]
+    recent_runs: List[RecentRun]
