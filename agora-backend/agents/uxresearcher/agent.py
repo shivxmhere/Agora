@@ -5,8 +5,8 @@ from langchain_core.prompts import PromptTemplate
 from agents.base import BaseAgent
 
 
-class MarketSpyAgent(BaseAgent):
-    agent_id = "marketspy"
+class UXResearcherAgent(BaseAgent):
+    agent_id = "uxresearcher"
 
     def __init__(self):
         groq_key = os.getenv("GROQ_API_KEY", "")
@@ -28,35 +28,32 @@ class MarketSpyAgent(BaseAgent):
     def _run_with_llm(self, input: str, stream_callback: Optional[Callable] = None) -> str:
         cb = stream_callback or (lambda x: None)
         
-        # 1. Search Phase
-        cb("\n🔍 **Deploying Market Spy Drones (Web Search)...**\n\n")
+        cb("\n👥 **Conducting User Persona & Competitor UX Analysis...**\n\n")
         sources = []
         context = ""
         if self.tavily_client:
             try:
-                res = self.tavily_client.search(f"{input} market competitors analysis pricing", search_depth="basic", max_results=3)
+                res = self.tavily_client.search(f"{input} user feedback UX review design patterns", search_depth="basic", max_results=3)
                 for r in res.get("results", []):
                     sources.append(r)
                     context += f"Source: {r.get('url')}\nContent: {r.get('content')}\n\n"
             except Exception as e:
-                cb(f"⚠️ Search failed: {e}\n")
+                cb(f"⚠️ Intel gathering failed: {e}\n")
         
-        context_block = f"Live Market Data:\n{context}" if context else "No live data available. Relying on baseline knowledge."
+        context_block = f"Live Market UX Data:\n{context}" if context else "Synthesizing based on standard design heuristics."
         
-        # 2. Generation Phase
-        cb("\n🧠 **Synthesizing Competitive Intelligence...**\n\n")
+        cb("\n✨ **Drafting UX Research Report...**\n\n")
         prompt = PromptTemplate.from_template(
-            "You are a Competitive Intelligence Agent. Perform a deep market scan for: {input}\n\n"
-            "Use the following live market data if relevant:\n{context_block}\n\n"
+            "You are a Senior UX Researcher & Product Designer.\n"
+            "Analyze the product idea, user feedback, or feature: {input}\n\n"
+            "Use the following live market UX data if relevant:\n{context_block}\n\n"
             "Format:\n"
-            "## 🕵️ Market Intelligence Report\n"
-            "### 🔎 Market Landscape\n"
-            "### ⚔️ Competitive Battlecard\n"
-            "| Competitor | Strength | Gap |\n"
-            "|------------|----------|-----|\n"
-            "### 📈 Growth Opportunities\n"
-            "### ⚠️ Threat Vectors & Contradictions (Highlight if sources disagree)\n"
-            "### 💡 Strategic Recommendation\n"
+            "## 🎨 UX Research & Empathy Report\n"
+            "### 🙍 User Personas (Generate 2 distinct profiles)\n"
+            "### ❤️ Pain Points & Friction (Highlight contradictory user needs if they exist)\n"
+            "### 💡 Usability Recommendations & Heuristics\n"
+            "### 🚀 Feature Prioritization Matrix\n"
+            "### 🏁 Conclusion\n"
         )
         
         output = ""
@@ -65,9 +62,8 @@ class MarketSpyAgent(BaseAgent):
             output += content
             cb(content)
             
-        # 3. Sources Phase
         if sources:
-            sources_section = "\n\n### 🌐 Sources Referenced\n"
+            sources_section = "\n\n### 🌐 UX Inspiration & Sources\n"
             for s in sources:
                 sources_section += f"- [{s.get('title', 'Link')}]({s.get('url')})\n"
             output += sources_section

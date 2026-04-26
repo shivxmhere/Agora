@@ -4,6 +4,11 @@ from agents.codereview.agent import CodeReviewAgent
 from agents.contentwriter.agent import ContentWriterAgent
 from agents.marketspy.agent import MarketSpyAgent
 from agents.dataanalyst.agent import DataAnalystAgent
+from agents.cybersec.agent import CyberSecAgent
+from agents.uxresearcher.agent import UXResearcherAgent
+from agents.devops.agent import DevOpsAgent
+from agents.legaltech.agent import LegalTechAgent
+from agents.copywriter.agent import CopywriterAgent
 
 AGENT_MAP = {
     "autoresearch": AutoResearchAgent,
@@ -11,6 +16,11 @@ AGENT_MAP = {
     "contentwriter": ContentWriterAgent,
     "marketspy": MarketSpyAgent,
     "dataanalyst": DataAnalystAgent,
+    "cybersec": CyberSecAgent,
+    "uxresearcher": UXResearcherAgent,
+    "devops": DevOpsAgent,
+    "legaltech": LegalTechAgent,
+    "copywriter": CopywriterAgent,
 }
 
 class AgentRegistry:

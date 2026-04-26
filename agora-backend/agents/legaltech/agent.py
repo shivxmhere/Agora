@@ -5,8 +5,8 @@ from langchain_core.prompts import PromptTemplate
 from agents.base import BaseAgent
 
 
-class MarketSpyAgent(BaseAgent):
-    agent_id = "marketspy"
+class LegalTechAgent(BaseAgent):
+    agent_id = "legaltech"
 
     def __init__(self):
         groq_key = os.getenv("GROQ_API_KEY", "")
@@ -28,35 +28,33 @@ class MarketSpyAgent(BaseAgent):
     def _run_with_llm(self, input: str, stream_callback: Optional[Callable] = None) -> str:
         cb = stream_callback or (lambda x: None)
         
-        # 1. Search Phase
-        cb("\n🔍 **Deploying Market Spy Drones (Web Search)...**\n\n")
+        cb("\n⚖️ **Reviewing Precedents & Legal Frameworks...**\n\n")
         sources = []
         context = ""
         if self.tavily_client:
             try:
-                res = self.tavily_client.search(f"{input} market competitors analysis pricing", search_depth="basic", max_results=3)
+                # We search for modern examples of whatever the user asked for
+                res = self.tavily_client.search(f"{input} legal compliance terms privacy standard template 2026", search_depth="basic", max_results=2)
                 for r in res.get("results", []):
                     sources.append(r)
                     context += f"Source: {r.get('url')}\nContent: {r.get('content')}\n\n"
             except Exception as e:
                 cb(f"⚠️ Search failed: {e}\n")
         
-        context_block = f"Live Market Data:\n{context}" if context else "No live data available. Relying on baseline knowledge."
+        context_block = f"Live Precedent Data:\n{context}" if context else "Standard boilerplate templates applied."
         
-        # 2. Generation Phase
-        cb("\n🧠 **Synthesizing Competitive Intelligence...**\n\n")
+        cb("\n📜 **Drafting Legal Analysis & Boilerplate...**\n\n")
         prompt = PromptTemplate.from_template(
-            "You are a Competitive Intelligence Agent. Perform a deep market scan for: {input}\n\n"
-            "Use the following live market data if relevant:\n{context_block}\n\n"
+            "You are an AI Legal Tech Assistant. IMPORTANT: You are NOT a lawyer. All outputs must contain strict disclaimers.\n"
+            "Draft boilerplate or analyze the following standard agreement / request: {input}\n\n"
+            "Reference modern compliance (GDPR, CCPA) using:\n{context_block}\n\n"
             "Format:\n"
-            "## 🕵️ Market Intelligence Report\n"
-            "### 🔎 Market Landscape\n"
-            "### ⚔️ Competitive Battlecard\n"
-            "| Competitor | Strength | Gap |\n"
-            "|------------|----------|-----|\n"
-            "### 📈 Growth Opportunities\n"
-            "### ⚠️ Threat Vectors & Contradictions (Highlight if sources disagree)\n"
-            "### 💡 Strategic Recommendation\n"
+            "## 📜 Legal Draft & Analysis Report\n"
+            "**⚠️ STRICT DISCLAIMER: This is AI-generated draft text, NOT legal advice. Consult a qualified attorney before use.**\n\n"
+            "### 📝 Requested Draft / Boilerplate Clause\n"
+            "### ⚖️ Compliance Checklist (GDPR/CCPA/etc.)\n"
+            "### ❌ Potential Liabilities & Contradictions (Highlight legal ambiguities)\n"
+            "### ✔️ Standard Next Steps\n"
         )
         
         output = ""
@@ -65,9 +63,8 @@ class MarketSpyAgent(BaseAgent):
             output += content
             cb(content)
             
-        # 3. Sources Phase
         if sources:
-            sources_section = "\n\n### 🌐 Sources Referenced\n"
+            sources_section = "\n\n### 🌐 Legal Templates Referenced\n"
             for s in sources:
                 sources_section += f"- [{s.get('title', 'Link')}]({s.get('url')})\n"
             output += sources_section
