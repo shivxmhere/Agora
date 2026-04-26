@@ -203,11 +203,11 @@ export default function AgentDetailPage() {
                 
                 <div className="bg-void border border-border flex flex-col mb-8 overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)]">
                   <div className="flex items-center gap-2 p-2 border-b border-border/30 bg-elevated">
-                    <label className="cursor-pointer text-[10px] font-mono text-cyan border border-cyan/30 px-2 py-1 hover:bg-cyan hover:text-void transition-colors flex items-center gap-1">
-                      📎 Upload Document
+                    <label className="cursor-pointer text-[10px] font-mono bg-cyan/10 text-cyan border border-cyan/40 px-3 py-1 hover:bg-cyan hover:text-void transition-all flex items-center gap-1 rounded-sm">
+                      📎 Upload Attachment
                       <input
                         type="file"
-                        accept=".csv,.json,.txt,.tsv,.xml,.md,.log,.py,.js,.ts,.html,.css,.yaml,.yml,.env,.sql,.sh"
+                        accept="*"
                         className="hidden"
                         onChange={(e) => {
                           const file = e.target.files?.[0];

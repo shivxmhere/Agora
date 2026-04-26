@@ -28,6 +28,7 @@ function FullScreenRunner() {
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState('');
   const [runStats, setRunStats] = useState<{time: number} | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState('');
   
   const [activeStep, setActiveStep] = useState(-1);
   const [elapsed, setElapsed] = useState(0);
@@ -166,15 +167,16 @@ function FullScreenRunner() {
                <div className="w-2 h-2 rounded-full bg-lime box-shadow-glow"/>
                <span className="text-sm font-bold tracking-widest">INPUT</span>
              </div>
-             <label className="cursor-pointer text-xs font-mono text-cyan border border-cyan/30 px-3 py-1.5 hover:bg-cyan hover:text-void transition-colors flex items-center gap-2">
-               📎 Upload Document
+             <label className="cursor-pointer text-xs font-mono bg-cyan/10 text-cyan border border-cyan/40 px-4 py-2 hover:bg-cyan hover:text-void transition-all flex items-center gap-2 rounded-sm">
+               📎 {uploadedFileName || 'Upload Document'}
                <input
                  type="file"
-                 accept=".csv,.json,.txt,.tsv,.xml,.md,.log,.py,.js,.ts,.html,.css,.yaml,.yml,.env,.sql,.sh"
+                 accept="*"
                  className="hidden"
                  onChange={(e) => {
                    const file = e.target.files?.[0];
                    if (file) {
+                     setUploadedFileName(file.name);
                      const reader = new FileReader();
                      reader.onload = (ev) => {
                        const text = ev.target?.result as string;
