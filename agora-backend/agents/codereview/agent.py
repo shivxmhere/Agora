@@ -10,8 +10,8 @@ class CodeReviewAgent(BaseAgent):
     def __init__(self):
         import os
         groq_key = os.getenv("GROQ_API_KEY", "")
-        if groq_key and "your_groq" not in groq_key and len(groq_key) > 10:
-            self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+        if not self._is_placeholder(groq_key):
+            self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
         else:
             self.llm = None
 

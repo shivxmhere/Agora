@@ -2,8 +2,8 @@ from agents.base import BaseAgent
 from agents.autoresearch.agent import AutoResearchAgent
 from agents.codereview.agent import CodeReviewAgent
 from agents.contentwriter.agent import ContentWriterAgent
-from agents.marketspy import MarketSpyAgent
-from agents.dataanalyst import DataAnalystAgent
+from agents.marketspy.agent import MarketSpyAgent
+from agents.dataanalyst.agent import DataAnalystAgent
 
 AGENT_MAP = {
     "autoresearch": AutoResearchAgent,

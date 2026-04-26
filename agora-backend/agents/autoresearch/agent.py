@@ -26,7 +26,7 @@ class AutoResearchAgent(BaseAgent):
     def __init__(self):
         groq_key = os.getenv("GROQ_API_KEY", "")
         if not self._is_placeholder(groq_key):
-            self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
+            self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
         else:
             self.llm = None
 
@@ -131,19 +131,26 @@ class AutoResearchAgent(BaseAgent):
 
     def reporter_node(self, state: ResearchState) -> Dict:
         state["stream_callback"]("\n📄 **Generating final report...**\n\n")
-        sources_text = "\n".join(s.get("url", "") for s in state["sources"])
+        sources_text = "\n".join(f"- [{s.get('title', s.get('url'))}]({s.get('url')})" for s in state["sources"])
         prompt = PromptTemplate.from_template(
-            "Write a final markdown report for the query: '{query}'.\n"
-            "Include headers: ## Summary, ## Key Findings, ## Sources\n"
-            "Verified data:\n{analysis}\nSources:\n{sources}"
+            "Write a final professional markdown report for the query: '{query}'.\n"
+            "Include headers: ## Summary, ## Key Findings, ## Analysis Details.\n"
+            "Validated insights:\n{analysis}\n"
+            "Exclude the sources list from your generation, I will append it manually."
         )
         report = ""
         for chunk in (prompt | self.llm).stream(
-            {"query": state["query"], "analysis": state["analysis"], "sources": sources_text}
+            {"query": state["query"], "analysis": state["analysis"]}
         ):
             content = chunk.content
             report += content
             state["stream_callback"](content)
+        
+        # Append sources part
+        sources_section = f"\n\n### 🌐 Sources Referenced\n{sources_text if sources_text else 'No external sources found.'}\n"
+        report += sources_section
+        state["stream_callback"](sources_section)
+        
         return {"report": report}
 
     def _run_with_llm(self, input: str, stream_callback: Optional[Callable] = None) -> str:
