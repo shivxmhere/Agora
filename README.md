@@ -44,13 +44,18 @@ AGORA is a production-grade AI Agent Marketplace where developers **publish** au
 
 ---
 
-## ⚡ Quick Capabilities
+## ⚡ The 10-Agent Marketplace
 
 | Agent | Capability | Tech Under the Hood |
 |-------|------------|----------------------|
 | **AutoResearch** | Deep Web Research | 5-Node LangGraph Pipeline + Tavily |
-| **DataAnalyst** | Quantitative Insights | Structured JSON Analysis + Groq |
-| **MarketSpy** | Intelligence Reports | SWOT + Competitor Matrix Generation |
+| **CyberSec** | Security Audits & CVEs | Live Vulnerability Intel + Groq |
+| **DevOps** | Infrastructure & CI/CD | Best Practice Scaling Metrics |
+| **UXResearcher** | User Personas & Heuristics| Feedback Synthesis + Design Empathy |
+| **LegalTech** | Compliance Boilerplates | Real-time Precedents (Strict Disclaimers) |
+| **Copywriter** | High-Converting SEO Copy | Viral Hooks & PAS Frameworks |
+| **DataAnalyst** | Quantitative Insights | Structured File Upload Analysis (Text) |
+| **MarketSpy** | Intelligence Reports | SWOT + Live Competitor Matrix |
 | **CodeReview** | Software Auditing | Security & Complexity Scoring |
 | **ContentWriter** | Creative Production | Multi-stage Creative Pipeline |
 
