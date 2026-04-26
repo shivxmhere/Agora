@@ -7,6 +7,7 @@ import { Play, Copy, CheckCircle2, ChevronRight, XCircle, ArrowLeft, Download, R
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 
 const steps = [
   "Searching",
@@ -165,6 +166,27 @@ function FullScreenRunner() {
                <div className="w-2 h-2 rounded-full bg-lime box-shadow-glow"/>
                <span className="text-sm font-bold tracking-widest">INPUT</span>
              </div>
+             {id === 'dataanalyst' && (
+               <label className="cursor-pointer text-xs font-mono text-cyan border border-cyan/30 px-3 py-1.5 hover:bg-cyan hover:text-void transition-colors flex items-center gap-2">
+                 📎 Upload File
+                 <input
+                   type="file"
+                   accept=".csv,.json,.txt,.tsv,.xml"
+                   className="hidden"
+                   onChange={(e) => {
+                     const file = e.target.files?.[0];
+                     if (file) {
+                       const reader = new FileReader();
+                       reader.onload = (ev) => {
+                         const text = ev.target?.result as string;
+                         setInput((prev) => prev + '\n\n--- UPLOADED FILE: ' + file.name + ' ---\n' + text.slice(0, 8000));
+                       };
+                       reader.readAsText(file);
+                     }
+                   }}
+                 />
+               </label>
+             )}
            </div>
            
            <div className="flex-1 flex flex-col p-6">
@@ -239,7 +261,7 @@ function FullScreenRunner() {
              )}
 
              {/* TERMINAL CONTENT */}
-             <div className="flex-1 p-6 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap selection:bg-cyan selection:text-void font-mono">
+             <div className="flex-1 p-6 overflow-y-auto text-sm leading-relaxed selection:bg-cyan selection:text-void font-mono">
                {!output && !isRunning && !error && (
                  <div className="text-dim h-full flex items-center justify-center text-center opacity-50">
                     <div>
@@ -248,7 +270,11 @@ function FullScreenRunner() {
                     </div>
                  </div>
                )}
-               {output}
+               {output && (
+                 <div className="prose prose-invert prose-sm max-w-none prose-a:text-cyan prose-a:underline prose-headings:text-cyan prose-strong:text-primary">
+                   <ReactMarkdown>{output}</ReactMarkdown>
+                 </div>
+               )}
                {isRunning && <span className="inline-block w-2 h-4 bg-cyan ml-1 align-middle animate-pulse"/>}
                {error && <div className="mt-4 p-4 bg-red-500/10 border border-red-500 text-red-500 font-bold">[CRITICAL_ERROR]: {error}</div>}
                <div ref={endOfOutputRef} />

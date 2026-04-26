@@ -1,3 +1,7 @@
+"""LegalTech Agent — Compliance & contract drafting engine.
+Unique pipeline: Precedent Search → Clause Generator → Compliance Check → Risk Assessment.
+Uses Tavily for live legal precedent lookup. Includes mandatory AI disclaimers.
+"""
 import os
 from typing import Callable, Optional
 from langchain_groq import ChatGroq
@@ -14,7 +18,7 @@ class LegalTechAgent(BaseAgent):
             self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
         else:
             self.llm = None
-            
+
         tavily_key = os.getenv("TAVILY_API_KEY", "")
         if not self._is_placeholder(tavily_key):
             try:
@@ -27,47 +31,60 @@ class LegalTechAgent(BaseAgent):
 
     def _run_with_llm(self, input: str, stream_callback: Optional[Callable] = None) -> str:
         cb = stream_callback or (lambda x: None)
-        
-        cb("\n⚖️ **Reviewing Precedents & Legal Frameworks...**\n\n")
         sources = []
-        context = ""
+
+        # ── Phase 1: Precedent Lookup ──
+        cb("\n⚖️ **Phase 1/3 — Searching legal precedents & frameworks...**\n\n")
+        precedents = ""
         if self.tavily_client:
             try:
-                # We search for modern examples of whatever the user asked for
-                res = self.tavily_client.search(f"{input} legal compliance terms privacy standard template 2026", search_depth="basic", max_results=2)
+                res = self.tavily_client.search(f"{input} legal template compliance contract standard clause", search_depth="basic", max_results=3)
                 for r in res.get("results", []):
                     sources.append(r)
-                    context += f"Source: {r.get('url')}\nContent: {r.get('content')}\n\n"
+                    precedents += f"[{r.get('title', '')}]\n{r.get('content', '')[:250]}\n\n"
             except Exception as e:
-                cb(f"⚠️ Search failed: {e}\n")
-        
-        context_block = f"Live Precedent Data:\n{context}" if context else "Standard boilerplate templates applied."
-        
-        cb("\n📜 **Drafting Legal Analysis & Boilerplate...**\n\n")
-        prompt = PromptTemplate.from_template(
-            "You are an AI Legal Tech Assistant. IMPORTANT: You are NOT a lawyer. All outputs must contain strict disclaimers.\n"
-            "Draft boilerplate or analyze the following standard agreement / request: {input}\n\n"
-            "Reference modern compliance (GDPR, CCPA) using:\n{context_block}\n\n"
-            "Format:\n"
-            "## 📜 Legal Draft & Analysis Report\n"
-            "**⚠️ STRICT DISCLAIMER: This is AI-generated draft text, NOT legal advice. Consult a qualified attorney before use.**\n\n"
-            "### 📝 Requested Draft / Boilerplate Clause\n"
-            "### ⚖️ Compliance Checklist (GDPR/CCPA/etc.)\n"
-            "### ❌ Potential Liabilities & Contradictions (Highlight legal ambiguities)\n"
-            "### ✔️ Standard Next Steps\n"
+                cb(f"⚠️ Precedent search failed: {e}\n")
+        if not precedents:
+            precedents = "Standard contract law principles (common law + GDPR/CCPA baseline)."
+
+        # ── Phase 2: Draft Generation ──
+        cb("\n📝 **Phase 2/3 — Drafting legal clauses...**\n\n")
+        draft_prompt = PromptTemplate.from_template(
+            "For this request: {input}\nPrecedents:\n{precedents}\n\n"
+            "Draft the requested legal document/clause.\n"
+            "Include standard protective language and define all key terms."
         )
-        
+        draft = ""
+        for chunk in (draft_prompt | self.llm).stream({"input": input, "precedents": precedents}):
+            draft += chunk.content
+
+        # ── Phase 3: Compliance & Risk — stream to user ──
+        cb("\n🔍 **Phase 3/3 — Running compliance audit...**\n\n")
+        final_prompt = PromptTemplate.from_template(
+            "Compile a full legal analysis report:\n\n"
+            "--- DRAFT ---\n{draft}\n\n"
+            "Request: {input}\n\n"
+            "Output clean Markdown:\n"
+            "## 📜 Legal Analysis & Draft Report\n\n"
+            "**⚠️ DISCLAIMER: This is AI-generated text for reference only. It is NOT legal advice. "
+            "Consult a qualified attorney before using any clause in production.**\n\n"
+            "### 📝 Generated Draft / Boilerplate\n"
+            "### ⚖️ Compliance Checklist (GDPR / CCPA / SOC2)\n"
+            "### ❌ Risk Assessment & Contradictions (flag ambiguous clauses)\n"
+            "### ✔️ Recommended Next Steps\n"
+            "Do NOT add sources — I will append them."
+        )
         output = ""
-        for chunk in (prompt | self.llm).stream({"input": input, "context_block": context_block}):
+        for chunk in (final_prompt | self.llm).stream({"input": input, "draft": draft}):
             content = chunk.content
             output += content
             cb(content)
-            
+
         if sources:
-            sources_section = "\n\n### 🌐 Legal Templates Referenced\n"
+            src = "\n\n### 🌐 Legal Precedent Sources\n"
             for s in sources:
-                sources_section += f"- [{s.get('title', 'Link')}]({s.get('url')})\n"
-            output += sources_section
-            cb(sources_section)
-            
+                src += f"- [{s.get('title', 'Link')}]({s.get('url')})\n"
+            output += src
+            cb(src)
+
         return output

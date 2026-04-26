@@ -1,3 +1,7 @@
+"""DevOps Agent — Infrastructure-as-Code generator.
+Unique pipeline: Stack Analysis → Dockerfile Gen → CI/CD Pipeline Gen → Scaling Strategy.
+Uses Tavily for latest deployment best practices. Outputs ready-to-copy config files.
+"""
 import os
 from typing import Callable, Optional
 from langchain_groq import ChatGroq
@@ -14,7 +18,7 @@ class DevOpsAgent(BaseAgent):
             self.llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.0)
         else:
             self.llm = None
-            
+
         tavily_key = os.getenv("TAVILY_API_KEY", "")
         if not self._is_placeholder(tavily_key):
             try:
@@ -27,47 +31,62 @@ class DevOpsAgent(BaseAgent):
 
     def _run_with_llm(self, input: str, stream_callback: Optional[Callable] = None) -> str:
         cb = stream_callback or (lambda x: None)
-        
-        cb("\n⚙️ **Scanning Architecture Best Practices...**\n\n")
         sources = []
-        context = ""
+
+        # ── Phase 1: Best Practice Lookup ──
+        cb("\n📚 **Phase 1/3 — Fetching latest deployment patterns...**\n\n")
+        docs = ""
         if self.tavily_client:
             try:
-                # We search for modern examples of whatever the user asked for
-                res = self.tavily_client.search(f"{input} best practices architecture kubernetes docker Github actions", search_depth="basic", max_results=2)
+                res = self.tavily_client.search(f"{input} deployment docker kubernetes best practices 2026", search_depth="basic", max_results=3)
                 for r in res.get("results", []):
                     sources.append(r)
-                    context += f"Source: {r.get('url')}\nContent: {r.get('content')}\n\n"
+                    docs += f"[{r.get('title', '')}]\n{r.get('content', '')[:250]}\n\n"
             except Exception as e:
-                cb(f"⚠️ Search failed: {e}\n")
-        
-        context_block = f"Live Docs:\n{context}" if context else "Standard architecture patterns applied."
-        
-        cb("\n🛠️ **Generating Infrastructure Blueprints...**\n\n")
-        prompt = PromptTemplate.from_template(
-            "You are a Principal DevOps & Cloud Infrastructure Engineer.\n"
-            "Build infrastructure configs and CI/CD pipelines for: {input}\n\n"
-            "Reference modern practices:\n{context_block}\n\n"
-            "Format:\n"
-            "## ⚙️ DevOps & Cloud Architecture Plan\n"
-            "### 🏗️ Architecture Overview\n"
-            "### 🐳 Docker/Containerization Strategy (Provide sample Dockerfile)\n"
-            "### 🚀 CI/CD Pipeline (Provide sample GitHub Actions YAML)\n"
-            "### 🌩️ Deployment / Kubernetes Manifests (Show snippets)\n"
-            "### ⚠️ Scalability & Cost Warnings (Highlight contradicting scaling theories if applicable)\n"
+                cb(f"⚠️ Doc lookup failed: {e}\n")
+        if not docs:
+            docs = "Standard 12-factor methodology + cloud-native patterns."
+
+        # ── Phase 2: Config Generation ──
+        cb("\n🐳 **Phase 2/3 — Generating infrastructure configs...**\n\n")
+        config_prompt = PromptTemplate.from_template(
+            "For this stack: {input}\nBest practices:\n{docs}\n\n"
+            "Generate production-ready configs:\n"
+            "1. Multi-stage Dockerfile (with security hardening)\n"
+            "2. docker-compose.yml (with health checks)\n"
+            "3. GitHub Actions CI/CD pipeline (.github/workflows/deploy.yml)\n"
+            "Output each as a fenced code block with the correct language tag."
         )
-        
+        configs = ""
+        for chunk in (config_prompt | self.llm).stream({"input": input, "docs": docs}):
+            configs += chunk.content
+
+        # ── Phase 3: Scaling Strategy — stream to user ──
+        cb("\n🚀 **Phase 3/3 — Compiling deployment strategy...**\n\n")
+        final_prompt = PromptTemplate.from_template(
+            "Compile a complete DevOps deployment guide:\n\n"
+            "--- CONFIGS ---\n{configs}\n\n"
+            "Stack: {input}\n\n"
+            "Output clean Markdown:\n"
+            "## ⚙️ DevOps Deployment Guide\n"
+            "### 🐳 Dockerfile (Multi-stage, Production-ready)\n"
+            "### 📦 Docker Compose\n"
+            "### 🔄 CI/CD Pipeline (GitHub Actions)\n"
+            "### 📈 Scaling Strategy & Cost Estimates\n"
+            "### ⚠️ Common Pitfalls & Contradictions (e.g., performance vs cost tradeoffs)\n"
+            "Do NOT add sources — I will append them."
+        )
         output = ""
-        for chunk in (prompt | self.llm).stream({"input": input, "context_block": context_block}):
+        for chunk in (final_prompt | self.llm).stream({"input": input, "configs": configs}):
             content = chunk.content
             output += content
             cb(content)
-            
+
         if sources:
-            sources_section = "\n\n### 🌐 Architecture References\n"
+            src = "\n\n### 🌐 DevOps References\n"
             for s in sources:
-                sources_section += f"- [{s.get('title', 'Link')}]({s.get('url')})\n"
-            output += sources_section
-            cb(sources_section)
-            
+                src += f"- [{s.get('title', 'Link')}]({s.get('url')})\n"
+            output += src
+            cb(src)
+
         return output

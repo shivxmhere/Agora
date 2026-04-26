@@ -202,6 +202,29 @@ export default function AgentDetailPage() {
                 </div>
                 
                 <div className="bg-void border border-border flex flex-col mb-8 overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                  <div className="flex items-center gap-2 p-2 border-b border-border/30 bg-elevated">
+                    {id === 'dataanalyst' && (
+                      <label className="cursor-pointer text-[10px] font-mono text-cyan border border-cyan/30 px-2 py-1 hover:bg-cyan hover:text-void transition-colors flex items-center gap-1">
+                        📎 Upload CSV/JSON
+                        <input
+                          type="file"
+                          accept=".csv,.json,.txt,.tsv,.xml"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                const text = ev.target?.result as string;
+                                setInput((prev) => prev + '\n\n--- UPLOADED FILE: ' + file.name + ' ---\n' + text.slice(0, 8000));
+                              };
+                              reader.readAsText(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
                   <textarea
                     value={input}
                     onChange={e => setInput(e.target.value)}
@@ -209,11 +232,15 @@ export default function AgentDetailPage() {
                     placeholder={agent.input_placeholder || "Enter input parameters here..."}
                   />
                   
-                  <div className="bg-[#050508] h-80 overflow-y-auto p-4 font-mono text-sm text-primary whitespace-pre-wrap relative scroll-smooth selection:bg-cyan selection:text-void">
+                  <div className="bg-[#050508] h-80 overflow-y-auto p-4 font-mono text-sm text-primary relative scroll-smooth selection:bg-cyan selection:text-void">
                     {!output && !isRunning && !error && (
                       <span className="text-dim">Waiting for payload... execute to begin.</span>
                     )}
-                    {output}
+                    {output && (
+                      <div className="prose prose-invert prose-sm max-w-none prose-a:text-cyan prose-a:underline prose-headings:text-cyan prose-strong:text-primary">
+                        <ReactMarkdown>{output}</ReactMarkdown>
+                      </div>
+                    )}
                     {isRunning && <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 0.8 }} className="inline-block w-2 h-4 bg-cyan ml-1 align-middle" />}
                     {error && <div className="text-red-500 mt-4 border border-red-500/30 bg-red-500/10 p-4 font-bold">[SYSTEM_ERROR]: {error}</div>}
                     {runStats && <div className="text-lime mt-4 pt-4 border-t border-dashed border-border/50 break-words font-bold">✓ Completed in {(runStats.time).toFixed(2)}s. Connection closed.</div>}

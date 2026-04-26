@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Rocket, ChevronDown, CheckCircle2, Zap } from 'lucide-react';
 import useSWR from 'swr';
 import { api } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
 
 export default function BattlePage() {
   const { data: agents } = useSWR('agents', () => api.getAgents());
@@ -175,8 +176,12 @@ export default function BattlePage() {
                <div className="text-dim">{stats1.time ? `${stats1.time.toFixed(2)}s` : stats1.running ? 'Running...' : 'Ready'}</div>
             </div>
             
-            <div className="p-6 flex-1 text-sm whitespace-pre-wrap text-primary/90 font-mono relative">
-              {out1}
+            <div className="p-6 flex-1 text-sm text-primary/90 font-mono relative overflow-y-auto">
+              {out1 && (
+                <div className="prose prose-invert prose-sm max-w-none prose-a:text-cyan prose-a:underline prose-headings:text-cyan">
+                  <ReactMarkdown>{out1}</ReactMarkdown>
+                </div>
+              )}
               {stats1.running && <span className="inline-block w-2 h-4 bg-cyan animate-pulse ml-1 align-middle" />}
               {stats1.error && <div className="text-red-500 mt-4 border border-red-500/30 bg-red-500/10 p-4">{stats1.error}</div>}
               {!out1 && !stats1.running && !stats1.error && <div className="text-dim absolute inset-0 flex items-center justify-center italic">Awaiting initiation sequence...</div>}
@@ -200,8 +205,12 @@ export default function BattlePage() {
                <div className="text-dim">{stats2.time ? `${stats2.time.toFixed(2)}s` : stats2.running ? 'Running...' : 'Ready'}</div>
             </div>
             
-            <div className="p-6 flex-1 text-sm whitespace-pre-wrap text-primary/90 font-mono relative">
-              {out2}
+            <div className="p-6 flex-1 text-sm text-primary/90 font-mono relative overflow-y-auto">
+              {out2 && (
+                <div className="prose prose-invert prose-sm max-w-none prose-a:text-purple prose-a:underline prose-headings:text-purple">
+                  <ReactMarkdown>{out2}</ReactMarkdown>
+                </div>
+              )}
               {stats2.running && <span className="inline-block w-2 h-4 bg-purple animate-pulse ml-1 align-middle" />}
               {stats2.error && <div className="text-red-500 mt-4 border border-red-500/30 bg-red-500/10 p-4">{stats2.error}</div>}
               {!out2 && !stats2.running && !stats2.error && <div className="text-dim absolute inset-0 flex items-center justify-center italic">Awaiting initiation sequence...</div>}
