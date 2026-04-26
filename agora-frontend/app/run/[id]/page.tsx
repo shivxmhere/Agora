@@ -166,27 +166,25 @@ function FullScreenRunner() {
                <div className="w-2 h-2 rounded-full bg-lime box-shadow-glow"/>
                <span className="text-sm font-bold tracking-widest">INPUT</span>
              </div>
-             {id === 'dataanalyst' && (
-               <label className="cursor-pointer text-xs font-mono text-cyan border border-cyan/30 px-3 py-1.5 hover:bg-cyan hover:text-void transition-colors flex items-center gap-2">
-                 📎 Upload File
-                 <input
-                   type="file"
-                   accept=".csv,.json,.txt,.tsv,.xml"
-                   className="hidden"
-                   onChange={(e) => {
-                     const file = e.target.files?.[0];
-                     if (file) {
-                       const reader = new FileReader();
-                       reader.onload = (ev) => {
-                         const text = ev.target?.result as string;
-                         setInput((prev) => prev + '\n\n--- UPLOADED FILE: ' + file.name + ' ---\n' + text.slice(0, 8000));
-                       };
-                       reader.readAsText(file);
-                     }
-                   }}
-                 />
-               </label>
-             )}
+             <label className="cursor-pointer text-xs font-mono text-cyan border border-cyan/30 px-3 py-1.5 hover:bg-cyan hover:text-void transition-colors flex items-center gap-2">
+               📎 Upload Document
+               <input
+                 type="file"
+                 accept=".csv,.json,.txt,.tsv,.xml,.md,.log,.py,.js,.ts,.html,.css,.yaml,.yml,.env,.sql,.sh"
+                 className="hidden"
+                 onChange={(e) => {
+                   const file = e.target.files?.[0];
+                   if (file) {
+                     const reader = new FileReader();
+                     reader.onload = (ev) => {
+                       const text = ev.target?.result as string;
+                       setInput((prev) => (prev ? prev + '\n\n' : '') + '--- UPLOADED FILE: ' + file.name + ' ---\n' + text.slice(0, 10000));
+                     };
+                     reader.readAsText(file);
+                   }
+                 }}
+               />
+             </label>
            </div>
            
            <div className="flex-1 flex flex-col p-6">
@@ -195,7 +193,7 @@ function FullScreenRunner() {
                 onChange={e => setInput(e.target.value)}
                 disabled={isRunning}
                 className="w-full flex-1 bg-transparent border-none text-primary font-mono text-sm focus:outline-none resize-none mb-6 placeholder-dim disabled:opacity-50"
-                placeholder={agent.input_placeholder || "root@agora:~# Type query..."}
+                placeholder={agent.input_placeholder || "root@agora:~# Type query or upload a document..."}
              />
              
              <div className="flex flex-col gap-4 mt-auto">

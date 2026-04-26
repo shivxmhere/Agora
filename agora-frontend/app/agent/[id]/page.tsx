@@ -203,27 +203,25 @@ export default function AgentDetailPage() {
                 
                 <div className="bg-void border border-border flex flex-col mb-8 overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.5)]">
                   <div className="flex items-center gap-2 p-2 border-b border-border/30 bg-elevated">
-                    {id === 'dataanalyst' && (
-                      <label className="cursor-pointer text-[10px] font-mono text-cyan border border-cyan/30 px-2 py-1 hover:bg-cyan hover:text-void transition-colors flex items-center gap-1">
-                        📎 Upload CSV/JSON
-                        <input
-                          type="file"
-                          accept=".csv,.json,.txt,.tsv,.xml"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                const text = ev.target?.result as string;
-                                setInput((prev) => prev + '\n\n--- UPLOADED FILE: ' + file.name + ' ---\n' + text.slice(0, 8000));
-                              };
-                              reader.readAsText(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    )}
+                    <label className="cursor-pointer text-[10px] font-mono text-cyan border border-cyan/30 px-2 py-1 hover:bg-cyan hover:text-void transition-colors flex items-center gap-1">
+                      📎 Upload Document
+                      <input
+                        type="file"
+                        accept=".csv,.json,.txt,.tsv,.xml,.md,.log,.py,.js,.ts,.html,.css,.yaml,.yml,.env,.sql,.sh"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              const text = ev.target?.result as string;
+                              setInput((prev) => (prev ? prev + '\n\n' : '') + '--- UPLOADED FILE: ' + file.name + ' ---\n' + text.slice(0, 10000));
+                            };
+                            reader.readAsText(file);
+                          }
+                        }}
+                      />
+                    </label>
                   </div>
                   <textarea
                     value={input}
